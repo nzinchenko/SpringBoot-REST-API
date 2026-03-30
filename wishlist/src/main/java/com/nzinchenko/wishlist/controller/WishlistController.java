@@ -17,7 +17,6 @@ public class WishlistController {
         return service.getAllItems();
     }
 
-    // Ми передаємо лише URL, а парсер сам знаходить назву
     @PostMapping("/add")
     public WishlistItem addItem(@RequestParam String url) {
         return service.addItemFromUrl(url);

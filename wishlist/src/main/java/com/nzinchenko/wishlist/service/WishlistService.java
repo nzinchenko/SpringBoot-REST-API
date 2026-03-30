@@ -13,14 +13,12 @@ public class WishlistService {
     @Autowired
     private ItemRepository repository;
 
-    // Парсинг заголовка сторінки за посиланням
     public WishlistItem addItemFromUrl(String url) {
         WishlistItem item = new WishlistItem();
         item.setProductUrl(url);
         try {
-            // Jsoup йде за посиланням і забирає HTML сторінки
             Document doc = Jsoup.connect(url).get();
-            item.setTitle(doc.title()); // Витягуємо тег <title>
+            item.setTitle(doc.title());
         } catch (IOException e) {
             item.setTitle("Назва не знайдена");
         }
