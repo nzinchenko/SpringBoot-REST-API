@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Мій планувальник покупок</title>
+    <style>
+        :root {
+            --primary-color: #6c5ce7;
+            --bg-color: #f9f9fd;
+            --text-color: #2d3436;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 40px 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+        }
+        h1 {
+            text-align: center;
+            color: var(--primary-color);
+            margin-bottom: 30px;
+        }
+        .input-section {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+        input[type="url"] {
+            flex-grow: 1;
+            padding: 12px 15px;
+            border: 2px solid #eee;
+            border-radius: 8px;
+            font-size: 16px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        input[type="url"]:focus {
+            border-color: var(--primary-color);
+        }
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: opacity 0.3s;
+        }
+        button:hover {
+            opacity: 0.9;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 20px;
+        }
+        .card {
+            position: relative;
+            background: #fff;
+            border: 1px solid #f0f0f0;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+            transition: transform 0.2s;
+        }
+        .delete-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: transparent;
+            color: #ff7675;
+            border: none;
+            padding: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            opacity: 0.5;
+            transition: opacity 0.2s, transform 0.2s;
+        }
+        .delete-btn:hover {
+            opacity: 1;
+            transform: scale(1.2);
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 15px rgba(0,0,0,0.05);
+        }
+        .card-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .card a {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: bold;
+        }
+        .card a:hover {
+            text-decoration: underline;
+        }
+        #loading {
+            text-align: center;
+            display: none;
+            color: #666;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🎁 Мої бажані покупки</h1>
+
+    <div class="input-section">
+        <input type="url" id="urlInput" placeholder="Вставте посилання на товар (наприклад, з OLX або Prom)" required>
+        <button onclick="addItem()">Додати</button>
+    </div>
+
+    <div id="loading">Завантаження даних... ⏳</div>
+
+    <div class="grid" id="itemsGrid">
+    </div>
+</div>
+
+<script>
+    const apiUrl = 'http://localhost:8080/api/items';
+
+    async function fetchItems() {
+        try {
+            const response = await fetch(apiUrl);
+            const items = await response.json();
+            renderItems(items);
+        } catch (error) {
+            console.error('Помилка завантаження:', error);
+            alert('Не вдалося з\'єднатися з сервером.');
+        }
+    }
+
+    function renderItems(items) {
+        const grid = document.getElementById('itemsGrid');
+        grid.innerHTML = '';
+
+        items.forEach(item => {
+            const card = document.createElement('div');
+            card.className = 'card';
+
+            // Якщо назви немає, показуємо "Без назви"
+            const displayTitle = item.title ? item.title : 'Без назви';
+
+            // Захист від помилок, якщо в назві є лапки (наприклад, "М'яч")
+            const safeTitle = displayTitle.replace(/'/g, "\\'");
+
+            card.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                        <button class="edit-btn" onclick="editItem(${item.id}, '${safeTitle}')" title="Редагувати">✏️</button>
+                        <button class="delete-btn" onclick="deleteItem(${item.id})" title="Видалити">❌</button>
+                    </div>
+                    <div class="card-title" title="${displayTitle}">${displayTitle}</div>
+                    <a href="${item.productUrl}" target="_blank">Перейти до товару 🛒</a>
+                `;
+            grid.appendChild(card);
+        });
+    }
+
+    // ОНОВЛЕНА ФУНКЦІЯ РЕДАГУВАННЯ
+    async function editItem(id, currentTitle) {
+        const promptDefault = currentTitle === 'Без назви' ? '' : currentTitle;
+        const newTitle = prompt('Введіть нову назву товару:', promptDefault);
+
+        if (newTitle === null || newTitle.trim() === '' || newTitle.trim() === currentTitle) {
+            return;
+        }
+
+        try {
+            await fetch(`${apiUrl}/${id}`, {
+                method: 'PUT',
+                headers: {
+                    // Обов'язково вказуємо серверу, що відправляємо JSON
+                    'Content-Type': 'application/json'
+                },
+                // ВАЖЛИВО: відправляємо ключ "newTitle", як того чекає ваш ItemUpdateDTO
+                body: JSON.stringify({ newTitle: newTitle.trim() })
+            });
+
+            fetchItems();
+        } catch (error) {
+            console.error('Помилка:', error);
+            alert('Не вдалося оновити товар.');
+        }
+    }
+
+    async function deleteItem(id) {
+        if (!confirm('Ви впевнені, що хочете видалити цей товар?')) {
+            return;
+        }
+
+        try {
+            await fetch(`${apiUrl}/${id}`, {
+                method: 'DELETE'
+            });
+
+            fetchItems();
+        } catch (error) {
+            console.error('Помилка:', error);
+            alert('Не вдалося видалити товар.');
+        }
+    }
+
+    async function addItem() {
+        const input = document.getElementById('urlInput');
+        const url = input.value.trim();
+        const loading = document.getElementById('loading');
+
+        if (!url) {
+            alert('Будь ласка, вставте посилання!');
+            return;
+        }
+
+        loading.style.display = 'block';
+
+        try {
+            await fetch(`${apiUrl}/add?url=${encodeURIComponent(url)}`, {
+                method: 'POST'
+            });
+
+            input.value = '';
+            fetchItems();
+        } catch (error) {
+            console.error('Помилка:', error);
+            alert('Не вдалося додати товар.');
+        } finally {
+            loading.style.display = 'none';
+        }
+    }
+</script>
+
+</body>
+</html>

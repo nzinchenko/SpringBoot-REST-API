@@ -28,4 +28,16 @@ public class WishlistService {
     public List<WishlistItem> getAllItems() {
         return repository.findAll();
     }
+
+    public void deleteItem(Long id) {
+        repository.deleteById(id);
+    }
+
+    public WishlistItem updateItem(Long id, String newTitle) {
+        WishlistItem item = repository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Товар не знайдено"));
+
+        item.setTitle(newTitle);
+        return repository.save(item);
+    }
 }
